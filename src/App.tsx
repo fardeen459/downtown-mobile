@@ -6,7 +6,13 @@ import {
 } from 'lucide-react'
 import { initLenis, scrollToId } from './lenis'
 import { Counter, Eyebrow, FadeUp, Magnetic, Reveal } from './components/ui'
-import { BeforeAfterArt, ModelsArt, StudioArt } from './components/Art'
+type Imgs = typeof import('./images').default
+let imgCache: Imgs | null = null
+function useImgs(): Partial<Imgs> {
+  const [imgs, set] = useState<Partial<Imgs>>(imgCache ?? {})
+  useEffect(() => { if (!imgCache) import('./images').then((m) => { imgCache = m.default; set(m.default) }) }, [])
+  return imgs
+}
 
 const Scene = lazy(() => import('./components/Scene'))
 const ease = [0.22, 1, 0.36, 1] as const
@@ -202,8 +208,15 @@ function Studio() {
   const fixed = useTransform(p, [0.55, 0.75], [0, 1])
   const cracks = useTransform(p, [0.45, 0.65], [1, 0])
   const bar = useTransform(p, [0, 1], ['0%', '100%'])
+  const imgs = useImgs()
+  const bgScale = useTransform(p, [0, 1], [1.12, 1])
+  const bgOp = useTransform(p, [0, 0.15, 0.85, 1], [0.35, 0.75, 0.75, 0.4])
   return (
     <section id="studio" ref={ref} className="studio">
+      <div className="studio-bg" aria-hidden="true">
+        <motion.img src={imgs.studioBg} alt="" loading="lazy" decoding="async" style={{ scale: bgScale, opacity: bgOp }} />
+        <div className="studio-bg-shade" />
+      </div>
       <div className="studio-sticky">
         <div className="studio-text">
           <motion.div style={{ opacity: t1, y: y1 }}><Eyebrow>The Studio</Eyebrow></motion.div>
@@ -300,19 +313,20 @@ function How() {
 }
 
 /* ---------------- Gallery ---------------- */
-function GalleryItem({ art, caption, idx }: { art: React.ReactNode; caption: string; idx: number }) {
+function GalleryItem({ src, alt, caption, idx }: { src?: string; alt: string; caption: string; idx: number }) {
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
   const y = useTransform(scrollYProgress, [0, 1], [idx === 1 ? 80 : 30, idx === 1 ? -80 : -30])
   const inner = useTransform(scrollYProgress, [0, 1], ['-6%', '6%'])
   return (
     <motion.figure ref={ref} className={`gitem gitem-${idx}`} style={{ y }}>
-      <div className="gframe"><motion.div className="gart" style={{ y: inner }}>{art}</motion.div><div className="gshade" /></div>
+      <div className="gframe"><motion.div className="gart" style={{ y: inner }}><img className="art" src={src} alt={alt} loading="lazy" decoding="async" width={1456} height={1088} /></motion.div><div className="gshade" /></div>
       <figcaption><span>0{idx + 1}</span>{caption}<ArrowUpRight size={16} strokeWidth={1.3} /></figcaption>
     </motion.figure>
   )
 }
 function Gallery() {
+  const imgs = useImgs()
   return (
     <section className="section gallery-sec">
       <div className="section-head split">
@@ -320,9 +334,9 @@ function Gallery() {
         <FadeUp><p className="lede">A look inside the bench — where cracked glass becomes flawless again.</p></FadeUp>
       </div>
       <div className="gallery">
-        <GalleryItem idx={0} art={<BeforeAfterArt />} caption="Before and after screen repair" />
-        <GalleryItem idx={1} art={<StudioArt />} caption="Our repair studio interior" />
-        <GalleryItem idx={2} art={<ModelsArt />} caption="iPhone models we repair" />
+        <GalleryItem idx={0} src={imgs.beforeAfter} alt="Before and after phone screen repair - Downtown Mobile Turlock" caption="Before and after screen repair" />
+        <GalleryItem idx={1} src={imgs.studio} alt="Downtown Mobile professional repair shop interior" caption="Our repair studio interior" />
+        <GalleryItem idx={2} src={imgs.devices} alt="Variety of smartphone models repaired at Downtown Mobile Turlock CA" caption="Smartphones we repair" />
       </div>
     </section>
   )
@@ -465,8 +479,10 @@ function FAQ() {
 
 /* ---------------- Final CTA ---------------- */
 function FinalCTA() {
+  const imgs = useImgs()
   return (
     <section className="final">
+      <div className="final-tex" aria-hidden="true" style={imgs.ctaTexture ? { backgroundImage: `url(${imgs.ctaTexture})` } : undefined} />
       <div className="final-ring" />
       <Reveal text="Ready to Fix Your Phone?" className="final-title" />
       <FadeUp><p className="lede">Schedule your appointment or walk in today for same-day service</p></FadeUp>
